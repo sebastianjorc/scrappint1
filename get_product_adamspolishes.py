@@ -12,6 +12,24 @@ from bs4 import BeautifulSoup
 
 dominio = 'https://www.adamspolishes.cl'
 url = 'https://www.adamspolishes.cl'#/collections/liquidos'
+# Definir las cabeceras del archivo CSV
+headers = ['Categoria', 'Subcategoria', 'Etiqueta', 'Marca', 'Título', 'URL Imagen', 'Precio', 'Descripción']
+# Verificar si el archivo CSV existe
+file_exists = os.path.isfile('adamspolishes.csv')
+# Abrir el archivo CSV en modo "agregar y leer" al inicio del programa
+with open('adamspolishes.csv', 'a+', newline='') as file:
+    writer = csv.writer(file)
+    # Escribir las cabeceras solo si el archivo no existe o está vacío
+    if not file_exists or file.tell() == 0:
+        writer.writerow(headers)
+# Abrir el archivo CSV en modo "agregar" o "escritura" al inicio del programa
+
+with open('adamspolishes.csv', 'a', newline='') as file:
+    writer = csv.writer(file)
+
+    # Escribir las cabeceras solo si el archivo está vacío
+    if file.tell() == 0:
+        writer.writerow(headers)
 
 def sleep_rnd():    
     tiempo_espera = random.uniform(3, 8)
@@ -118,6 +136,7 @@ def obtener_data_producto(html_content, carpeta_base):
             # Verificar si la URL comienza con '//'
             if src.startswith('//'):
                 src = 'https:' + src
+                enlaces_hijo.append(src+' ')
             # Obtener el nombre de archivo a partir del enlace y limpiarlo
             filename = os.path.basename(src)
             filename = clean_filename(filename)
@@ -150,7 +169,12 @@ def obtener_data_producto(html_content, carpeta_base):
     src_concatenados = ' '.join(enlaces_hijo)
     return marca, titulo, src_concatenados, precio_numerico, descripcion
 
-def obtener_data_paginacion(url, plp):
+def agregar_datos_a_csv(data):
+    with open('adamspolishes.csv', 'a', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(data)
+
+def obtener_data_paginacion(url, plp, categoria, subcategoria, etiqueta):
     page = 1
     
     while True:
@@ -164,7 +188,9 @@ def obtener_data_paginacion(url, plp):
         for enlace_producto in enlaces_producto:
             html_content = hacer_solicitud(enlace_producto)
             # Llamar a la función y asignar los valores retornados a variables individuales
-            marca, titulo, src_concatenados, precio_numerico, descripcion = obtener_datos_producto(html_content, plp)
+            marca, titulo, src_concatenados, precio_numerico, descripcion = obtener_data_producto(html_content, plp) 
+            data = [categoria, subcategoria, etiqueta, marca, titulo, src_concatenados, precio_numerico, descripcion]
+            agregar_datos_a_csv(data)
         
         # Verificar si existe un enlace para la siguiente página
         html_content = hacer_solicitud(url)
@@ -229,11 +255,11 @@ def obtener_categorias(url):
                     # Crear la carpeta específica para el producto
                     os.makedirs(ruta_carpeta_etiqueta, exist_ok=True)
 
-                    obtener_data_paginacion(url,ruta_carpeta_etiqueta)
+                    obtener_data_paginacion(url,ruta_carpeta_etiqueta,categoria_title, subcategoria_title, etiqueta_title)
             else:
                 url=dominio+subcategoria['href']
                 print(" : "+url)
-                obtener_data_paginacion(url,ruta_carpeta_subcategoria)
+                obtener_data_paginacion(url,ruta_carpeta_subcategoria,categoria_title, subcategoria_title,'')
 
     return categorias_title
     
